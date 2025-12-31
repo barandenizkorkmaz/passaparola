@@ -77,13 +77,15 @@ export default function Home() {
         name: input.name.trim(),
       }));
 
+    // Update settings
     updateSettings({
       timeLimit: tempTimeLimit,
       players: validPlayers,
     });
 
+    // Start game with players directly to avoid race condition
     if (validPlayers.length > 0) {
-      startGame(0);
+      startGame(0, validPlayers);
     } else {
       startGame();
     }

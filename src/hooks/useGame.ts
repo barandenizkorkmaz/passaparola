@@ -71,9 +71,10 @@ export function useGame() {
     setGameSettings((prev) => ({ ...prev, ...settings }));
   }, []);
 
-  const startGame = useCallback((playerIndex?: number) => {
+  const startGame = useCallback((playerIndex?: number, playersOverride?: GameSettings['players']) => {
+    const players = playersOverride || gameSettings.players;
     const index = playerIndex !== undefined ? playerIndex : currentPlayerIndex;
-    const activePlayer = gameSettings.players[index];
+    const activePlayer = players[index];
 
     setGameState({
       currentLetterIndex: 0,
