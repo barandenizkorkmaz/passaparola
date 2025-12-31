@@ -14,6 +14,7 @@ export default function Home() {
     leaderboard,
     showSettings,
     currentPlayerIndex,
+    sessionQuestions,
     setCurrentAnswer,
     setShowSettings,
     updateSettings,
@@ -23,6 +24,7 @@ export default function Home() {
     endGame,
     goToMainMenu,
     nextPlayer,
+    fetchQuestions,
     getCurrentQuestion,
     currentLetter,
     letterStatuses,
@@ -69,7 +71,7 @@ export default function Home() {
     ));
   };
 
-  const handleStartGameWithSettings = () => {
+  const handleStartGameWithSettings = async () => {
     const validPlayers = playerInputs
       .filter((input) => input.name.trim())
       .map((input) => ({
@@ -82,6 +84,14 @@ export default function Home() {
       timeLimit: tempTimeLimit,
       players: validPlayers,
     });
+
+    // Fetch questions from MongoDB for this session
+    const success = await fetchQuestions();
+
+    if (!success) {
+      alert('Failed to load questions. Please check your internet connection and try again.');
+      return;
+    }
 
     // Start game with players directly to avoid race condition
     if (validPlayers.length > 0) {
@@ -172,7 +182,7 @@ export default function Home() {
                 <input
                   type="range"
                   min="30"
-                  max="300"
+                  max="600"
                   step="30"
                   value={tempTimeLimit}
                   onChange={(e) => setTempTimeLimit(Number(e.target.value))}

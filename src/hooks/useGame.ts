@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { GameState, GameSettings, LeaderboardEntry, LetterStatus } from '@/types/game';
-import { TURKISH_ALPHABET, SAMPLE_QUESTIONS } from '@/data/questions';
+import { GameState, GameSettings, LeaderboardEntry, LetterStatus, Question } from '@/types/game';
+import { TURKISH_ALPHABET } from '@/data/questions';
 
 const DEFAULT_TIME = 90;
 
@@ -13,6 +13,7 @@ export function useGame() {
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [leaderboardMap, setLeaderboardMap] = useState<Map<string, LeaderboardEntry>>(new Map());
   const [showSettings, setShowSettings] = useState(false);
+  const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
 
   const [gameState, setGameState] = useState<GameState>({
     currentLetterIndex: 0,
@@ -107,8 +108,24 @@ export function useGame() {
 
   const getCurrentQuestion = useCallback(() => {
     const currentLetter = TURKISH_ALPHABET[gameState.currentLetterIndex];
-    return SAMPLE_QUESTIONS.find((q) => q.letter === currentLetter);
-  }, [gameState.currentLetterIndex]);
+    return sessionQuestions.find((q) => q.letter === currentLetter);
+  }, [gameState.currentLetterIndex, sessionQuestions]);
+
+  const fetchQuestions = useCallback(async () => {
+    try {
+      const response = await fetch('/api/questions');
+      const data = await response.json();
+
+      if (data.success && data.questions) {
+        setSessionQuestions(data.questions);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to fetch questions:', error);
+      return false;
+    }
+  }, []);
 
   const moveToNextUnansweredLetter = useCallback(() => {
     setGameState((prev) => {
@@ -223,6 +240,7 @@ export function useGame() {
     leaderboard,
     showSettings,
     currentPlayerIndex,
+    sessionQuestions,
     setCurrentAnswer,
     setShowSettings,
     updateSettings,
@@ -232,6 +250,7 @@ export function useGame() {
     endGame,
     goToMainMenu,
     nextPlayer,
+    fetchQuestions,
     getCurrentQuestion,
     currentLetter: TURKISH_ALPHABET[gameState.currentLetterIndex],
     letterStatuses,
