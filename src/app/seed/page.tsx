@@ -53,6 +53,25 @@ export default function SeedPage() {
     }
   };
 
+  const handleImport = async () => {
+    if (!confirm('This will delete ALL existing questions and import from passaparola_questions.json. Continue?')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/questions/import', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      setResult(data);
+    } catch (error) {
+      setResult({ success: false, error: 'Failed to import questions' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
@@ -62,11 +81,19 @@ export default function SeedPage() {
 
         <div className="space-y-4 mb-6">
           <button
+            onClick={handleImport}
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-colors"
+          >
+            {loading ? 'Processing...' : 'Import Questions from JSON File'}
+          </button>
+
+          <button
             onClick={handleSeed}
             disabled={loading}
             className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 transition-colors"
           >
-            {loading ? 'Processing...' : 'Seed Database (Add 28 Questions)'}
+            {loading ? 'Processing...' : 'Seed Database (Add 28 Sample Questions)'}
           </button>
 
           <button
