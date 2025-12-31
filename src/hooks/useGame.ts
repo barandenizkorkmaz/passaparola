@@ -1,21 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
-import { GameState, LetterStatus } from '@/types/game';
+import { GameState, GameSettings, LeaderboardEntry, LetterStatus } from '@/types/game';
 import { TURKISH_ALPHABET, SAMPLE_QUESTIONS } from '@/data/questions';
 
-const INITIAL_TIME = 90;
+const DEFAULT_TIME = 90;
 
 export function useGame() {
+  const [gameSettings, setGameSettings] = useState<GameSettings>({
+    timeLimit: DEFAULT_TIME,
+    players: [],
+  });
+
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [leaderboardMap, setLeaderboardMap] = useState<Map<string, LeaderboardEntry>>(new Map());
+  const [showSettings, setShowSettings] = useState(false);
+
   const [gameState, setGameState] = useState<GameState>({
     currentLetterIndex: 0,
     score: 0,
     answers: {},
-    timeRemaining: INITIAL_TIME,
+    timeRemaining: DEFAULT_TIME,
     isGameActive: false,
     gameComplete: false,
+    currentPlayer: undefined,
   });
 
   const [currentAnswer, setCurrentAnswer] = useState('');
 
+  // Timer effect
   useEffect(() => {
     if (!gameState.isGameActive || gameState.gameComplete) return;
 
@@ -32,17 +43,66 @@ export function useGame() {
     return () => clearInterval(timer);
   }, [gameState.isGameActive, gameState.gameComplete]);
 
-  const startGame = useCallback(() => {
+  // Auto-save to leaderboard when game completes
+  useEffect(() => {
+    if (gameState.gameComplete && gameState.currentPlayer) {
+      const playerId = gameState.currentPlayer.id;
+      const entry: LeaderboardEntry = {
+        player: gameState.currentPlayer,
+        score: gameState.score,
+        totalQuestions: TURKISH_ALPHABET.length,
+        percentage: Math.round((gameState.score / TURKISH_ALPHABET.length) * 100),
+        timestamp: Date.now(),
+      };
+
+      setLeaderboardMap((prev) => {
+        // Only add if this player hasn't been recorded yet
+        if (prev.has(playerId)) {
+          return prev;
+        }
+        const newMap = new Map(prev);
+        newMap.set(playerId, entry);
+        return newMap;
+      });
+    }
+  }, [gameState.gameComplete, gameState.currentPlayer, gameState.score]);
+
+  const updateSettings = useCallback((settings: Partial<GameSettings>) => {
+    setGameSettings((prev) => ({ ...prev, ...settings }));
+  }, []);
+
+  const startGame = useCallback((playerIndex?: number) => {
+    const index = playerIndex !== undefined ? playerIndex : currentPlayerIndex;
+    const activePlayer = gameSettings.players[index];
+
     setGameState({
       currentLetterIndex: 0,
       score: 0,
       answers: {},
-      timeRemaining: INITIAL_TIME,
+      timeRemaining: gameSettings.timeLimit,
       isGameActive: true,
       gameComplete: false,
+      currentPlayer: activePlayer,
     });
     setCurrentAnswer('');
-  }, []);
+    setShowSettings(false);
+  }, [gameSettings, currentPlayerIndex]);
+
+  const goToMainMenu = useCallback(() => {
+    setGameState({
+      currentLetterIndex: 0,
+      score: 0,
+      answers: {},
+      timeRemaining: gameSettings.timeLimit,
+      isGameActive: false,
+      gameComplete: false,
+      currentPlayer: undefined,
+    });
+    setCurrentAnswer('');
+    setShowSettings(false);
+    setCurrentPlayerIndex(0);
+    setLeaderboardMap(new Map());
+  }, [gameSettings.timeLimit]);
 
   const getCurrentQuestion = useCallback(() => {
     const currentLetter = TURKISH_ALPHABET[gameState.currentLetterIndex];
@@ -120,6 +180,12 @@ export function useGame() {
     }));
   }, []);
 
+  const nextPlayer = useCallback(() => {
+    const nextIndex = currentPlayerIndex + 1;
+    setCurrentPlayerIndex(nextIndex);
+    startGame(nextIndex);
+  }, [currentPlayerIndex, startGame]);
+
   const getLetterStatus = useCallback(
     (letter: string): LetterStatus => {
       const currentLetter = TURKISH_ALPHABET[gameState.currentLetterIndex];
@@ -143,16 +209,32 @@ export function useGame() {
     return acc;
   }, {} as { [key: string]: LetterStatus });
 
+  // Convert map to sorted array for display
+  const leaderboard = Array.from(leaderboardMap.values()).sort((a, b) => b.score - a.score);
+
+  const isLastPlayer = gameSettings.players.length > 0 && currentPlayerIndex >= gameSettings.players.length - 1;
+  const hasNextPlayer = gameSettings.players.length > 0 && currentPlayerIndex < gameSettings.players.length - 1;
+
   return {
     gameState,
+    gameSettings,
     currentAnswer,
+    leaderboard,
+    showSettings,
+    currentPlayerIndex,
     setCurrentAnswer,
+    setShowSettings,
+    updateSettings,
     startGame,
     submitAnswer,
     passQuestion,
     endGame,
+    goToMainMenu,
+    nextPlayer,
     getCurrentQuestion,
     currentLetter: TURKISH_ALPHABET[gameState.currentLetterIndex],
     letterStatuses,
+    hasNextPlayer,
+    isLastPlayer,
   };
 }
